@@ -1,0 +1,1110 @@
+import { useState, useEffect, useRef } from "react";
+
+// ─── Inline styles via CSS-in-JS approach using a style tag ───────────────────
+const globalStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,wght@0,300;0,400;0,600;1,300&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0b;
+    --surface: #111114;
+    --surface2: #18181d;
+    --border: #2a2a32;
+    --accent: #e8ff47;
+    --accent2: #ff6b35;
+    --text: #e8e8ec;
+    --muted: #6b6b7a;
+    --success: #4ade80;
+    --danger: #f87171;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+
+  .app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .header-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .header-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .header-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .tab-btn {
+    padding: 7px 18px;
+    border-radius: 5px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .tab-btn.active {
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 500;
+  }
+  .tab-btn:hover:not(.active) { color: var(--text); background: var(--surface2); }
+
+  /* Layout */
+  .main {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    max-height: calc(100vh - 73px);
+  }
+  .sidebar-section {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* Lifts input */
+  .lift-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .lift-name {
+    font-size: 0.85rem;
+    color: var(--text);
+    font-weight: 300;
+  }
+  .lift-input {
+    width: 72px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    text-align: right;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  .lift-input:focus { border-color: var(--accent); }
+  .lift-unit {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    width: 22px;
+  }
+
+  /* Goal & athlete inputs */
+  .form-group { margin-bottom: 12px; }
+  .form-label {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+  .form-select option { background: var(--surface2); }
+  .form-textarea { resize: vertical; min-height: 80px; font-size: 0.82rem; line-height: 1.5; }
+
+  /* Tag chips */
+  .chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    padding: 5px 12px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip.active { border-color: var(--accent); background: var(--accent); color: var(--bg); }
+  .chip:hover:not(.active) { border-color: var(--text); color: var(--text); }
+
+  /* Analyze button */
+  .analyze-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 6px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 4px;
+  }
+  .analyze-btn:hover { background: #d4eb3c; transform: translateY(-1px); }
+  .analyze-btn:active { transform: translateY(0); }
+  .analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Right panel */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    max-height: calc(100vh - 73px);
+  }
+
+  /* Empty state */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 60px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .empty-icon {
+    font-size: 3rem;
+    line-height: 1;
+    opacity: 0.3;
+  }
+  .empty-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: 0.08em;
+    color: var(--border);
+  }
+  .empty-sub {
+    font-size: 0.82rem;
+    max-width: 280px;
+    line-height: 1.6;
+  }
+
+  /* Loading */
+  .loading-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 60px;
+  }
+  .loading-bar-wrap {
+    width: 200px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  @keyframes loadSlide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+  }
+  .loading-bar {
+    height: 100%;
+    width: 60%;
+    background: var(--accent);
+    border-radius: 2px;
+    animation: loadSlide 1.4s ease-in-out infinite;
+  }
+  .loading-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Analysis output */
+  .analysis-wrap {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .analysis-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .analysis-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.06em;
+    line-height: 1;
+  }
+  .analysis-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-top: 4px;
+  }
+  .rating-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .rating-ring {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+  }
+  .rating-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Score cards */
+  .score-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .score-card-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .score-card-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    line-height: 1;
+  }
+  .score-card-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  /* Analysis sections */
+  .analysis-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .analysis-section-header {
+    padding: 14px 18px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-icon { font-size: 0.9rem; }
+  .analysis-section-body {
+    padding: 18px;
+  }
+  .analysis-prose {
+    font-size: 0.88rem;
+    line-height: 1.75;
+    color: var(--text);
+    white-space: pre-wrap;
+    font-weight: 300;
+  }
+
+  /* Program blocks */
+  .program-week {
+    margin-bottom: 16px;
+  }
+  .program-week-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .program-day {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 10px;
+    margin-bottom: 8px;
+    align-items: start;
+  }
+  .program-day-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding-top: 2px;
+  }
+  .program-day-content {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  /* Ratio bars */
+  .ratio-bar-row {
+    display: grid;
+    grid-template-columns: 130px 1fr 60px;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .ratio-bar-label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+  }
+  .ratio-bar-track {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .ratio-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .ratio-bar-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    text-align: right;
+  }
+
+  /* Alert flags */
+  .flags-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .flag-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid;
+  }
+  .flag-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .flag-text {
+    font-size: 0.83rem;
+    line-height: 1.55;
+    font-weight: 300;
+  }
+  .flag-warn  { background: rgba(248,113,113,0.05); border-color: rgba(248,113,113,0.2); }
+  .flag-warn .flag-dot { background: var(--danger); }
+  .flag-info  { background: rgba(232,255,71,0.04); border-color: rgba(232,255,71,0.15); }
+  .flag-info .flag-dot { background: var(--accent); }
+  .flag-good  { background: rgba(74,222,128,0.04); border-color: rgba(74,222,128,0.15); }
+  .flag-good .flag-dot { background: var(--success); }
+
+  /* Chat tab */
+  .chat-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-height: calc(100vh - 73px);
+  }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .chat-msg {
+    display: flex;
+    gap: 12px;
+    max-width: 720px;
+  }
+  .chat-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .chat-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .chat-avatar.ai { background: var(--accent); color: var(--bg); font-family: 'Bebas Neue'; letter-spacing: 0.05em; font-size: 0.9rem; }
+  .chat-avatar.user { background: var(--surface2); border: 1px solid var(--border); }
+  .chat-bubble {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.87rem;
+    line-height: 1.7;
+    font-weight: 300;
+    white-space: pre-wrap;
+  }
+  .chat-bubble.ai { background: var(--surface); border: 1px solid var(--border); border-top-left-radius: 2px; }
+  .chat-bubble.user { background: var(--accent); color: var(--bg); border-bottom-right-radius: 2px; }
+  .chat-input-row {
+    padding: 16px 32px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .chat-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.87rem;
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s;
+    min-height: 42px;
+    max-height: 120px;
+    line-height: 1.5;
+  }
+  .chat-input:focus { border-color: var(--accent); }
+  .chat-send-btn {
+    padding: 10px 18px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .chat-send-btn:hover { background: #d4eb3c; }
+  .chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Typing indicator */
+  @keyframes blink { 0%,80%,100% { opacity: 0.2; } 40% { opacity: 1; } }
+  .typing-dots { display: flex; gap: 4px; padding: 4px 0; }
+  .typing-dots span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--muted);
+    animation: blink 1.4s infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+`;
+
+// ─── Default lifts ─────────────────────────────────────────────────────────────
+const DEFAULT_LIFTS = [
+  { name: "Back Squat", key: "squat", value: "" },
+  { name: "Deadlift", key: "deadlift", value: "" },
+  { name: "Bench Press", key: "bench", value: "" },
+  { name: "Overhead Press", key: "ohp", value: "" },
+  { name: "Power Clean", key: "clean", value: "" },
+  { name: "Pull-Up Max Reps", key: "pullup", value: "" },
+];
+
+const GOALS = ["Strength", "Power", "Hypertrophy", "Endurance", "Sport Perf", "Fat Loss"];
+const EXPERIENCE = ["Beginner", "Intermediate", "Advanced", "Elite"];
+
+// ─── Build the AI prompt ───────────────────────────────────────────────────────
+function buildPrompt(lifts, athlete, goals, notes) {
+  const liftStr = lifts
+    .filter(l => l.value)
+    .map(l => `${l.name}: ${l.value}${l.key === "pullup" ? " reps" : " lbs"}`)
+    .join(", ");
+
+  return `You are an expert S&C coach. Analyze this athlete and respond ONLY with a single valid JSON object — no prose, no markdown fences.
+
+ATHLETE: ${athlete.name || "Athlete"}, Age ${athlete.age || "?"}, ${athlete.bw ? athlete.bw + " lbs BW" : ""}, ${athlete.experience} level
+GOALS: ${goals.join(", ")}
+LIFTS: ${liftStr || "none entered"}
+NOTES: ${notes || "none"}
+
+Return this exact JSON structure (fill in real numbers/text, no angle-bracket placeholders):
+{
+  "overallScore": 72,
+  "strengthAge": "Intermediate",
+  "primaryFocus": "One sentence describing main focus",
+  "scores": { "strength": 70, "balance": 65, "potential": 80 },
+  "scoreNotes": { "strength": "note", "balance": "note", "potential": "note" },
+  "ratios": [
+    { "label": "Squat / Deadlift", "value": 0.82, "ideal": 0.85, "status": "ok" },
+    { "label": "Bench / Squat", "value": 0.61, "ideal": 0.65, "status": "warn" },
+    { "label": "OHP / Bench", "value": 0.64, "ideal": 0.65, "status": "ok" }
+  ],
+  "keyFindings": "3-4 sentences of observations.",
+  "flags": [
+    { "type": "warn", "text": "Specific issue here" },
+    { "type": "good", "text": "Strength here" }
+  ],
+  "weeklyProgram": {
+    "philosophy": "2-3 sentences on programming approach.",
+    "days": [
+      { "day": "Monday", "focus": "Lower — Squat", "detail": "Back Squat 4x5 @80%, Romanian DL 3x8, Leg Press 3x10" },
+      { "day": "Tuesday", "focus": "Upper — Push", "detail": "Bench 4x5 @78%, OHP 3x8, Tricep work" },
+      { "day": "Wednesday", "focus": "Conditioning", "detail": "30 min aerobic work or sport practice" },
+      { "day": "Thursday", "focus": "Lower — Pull", "detail": "Deadlift 4x4 @82%, Pause Squat 3x3, GHR 3x10" },
+      { "day": "Friday", "focus": "Upper — Pull", "detail": "Pull-ups 4xAMRAP, Rows 4x8, Face pulls 3x15" },
+      { "day": "Saturday", "focus": "Power / Accessory", "detail": "Power Clean 5x3, Jump work, weak point accessory" },
+      { "day": "Sunday", "focus": "Rest", "detail": "Active recovery, mobility, sleep" }
+    ]
+  },
+  "nextSteps": "3-4 specific actionable recommendations."
+}
+
+Use the athlete's actual lift numbers to compute real ratios. Status must be one of: ok, warn, good.`
+}
+
+
+// ─── Render analysis ───────────────────────────────────────────────────────────
+function AnalysisView({ data }) {
+  const score = data.overallScore || 0;
+  const scoreColor = score >= 75 ? "var(--success)" : score >= 50 ? "var(--accent)" : "var(--accent2)";
+
+  const barColor = (status) =>
+    status === "good" ? "var(--success)" : status === "warn" ? "var(--danger)" : "var(--accent)";
+
+  return (
+    <div className="analysis-wrap">
+      {/* Header */}
+      <div className="analysis-header">
+        <div>
+          <div className="analysis-title">COACHING REPORT</div>
+          <div className="analysis-meta">
+            {data.strengthAge} · Focus: {data.primaryFocus}
+          </div>
+        </div>
+        <div className="rating-badge">
+          <div className="rating-ring" style={{ border: `3px solid ${scoreColor}`, color: scoreColor }}>
+            {score}
+          </div>
+          <div className="rating-label">Score</div>
+        </div>
+      </div>
+
+      {/* Score cards */}
+      <div className="score-grid">
+        {["strength", "balance", "potential"].map(k => (
+          <div className="score-card" key={k}>
+            <div className="score-card-label">{k}</div>
+            <div className="score-card-value" style={{
+              color: data.scores[k] >= 75 ? "var(--success)" : data.scores[k] >= 50 ? "var(--accent)" : "var(--accent2)"
+            }}>
+              {data.scores[k]}
+            </div>
+            <div className="score-card-sub">{data.scoreNotes[k]}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Key findings */}
+      <div className="analysis-section">
+        <div className="analysis-section-header">
+          <span className="section-icon">🔍</span> Key Findings
+        </div>
+        <div className="analysis-section-body">
+          <div className="analysis-prose">{data.keyFindings}</div>
+        </div>
+      </div>
+
+      {/* Ratios */}
+      {data.ratios && data.ratios.some(r => r.value !== null) && (
+        <div className="analysis-section">
+          <div className="analysis-section-header">
+            <span className="section-icon">⚖️</span> Lift Ratios
+          </div>
+          <div className="analysis-section-body">
+            {data.ratios.filter(r => r.value !== null).map((r, i) => (
+              <div className="ratio-bar-row" key={i}>
+                <div className="ratio-bar-label">{r.label}</div>
+                <div className="ratio-bar-track">
+                  <div className="ratio-bar-fill" style={{
+                    width: `${Math.min(100, (r.value / (r.ideal * 1.5)) * 100)}%`,
+                    background: barColor(r.status)
+                  }} />
+                </div>
+                <div className="ratio-bar-val" style={{ color: barColor(r.status) }}>
+                  {r.value?.toFixed(2)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Flags */}
+      {data.flags?.length > 0 && (
+        <div className="analysis-section">
+          <div className="analysis-section-header">
+            <span className="section-icon">🚩</span> Coaching Flags
+          </div>
+          <div className="analysis-section-body">
+            <div className="flags-list">
+              {data.flags.map((f, i) => (
+                <div className={`flag-item flag-${f.type}`} key={i}>
+                  <div className="flag-dot" />
+                  <div className="flag-text">{f.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Program */}
+      {data.weeklyProgram && (
+        <div className="analysis-section">
+          <div className="analysis-section-header">
+            <span className="section-icon">📋</span> Weekly Program
+          </div>
+          <div className="analysis-section-body">
+            <div className="analysis-prose" style={{ marginBottom: 16, color: "var(--muted)" }}>
+              {data.weeklyProgram.philosophy}
+            </div>
+            {data.weeklyProgram.days?.map((d, i) => (
+              <div className="program-day" key={i}>
+                <div className="program-day-label">{d.day}</div>
+                <div className="program-day-content">
+                  <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: "0.82rem" }}>
+                    {d.focus}
+                  </span>
+                  <br />
+                  {d.detail}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Next steps */}
+      <div className="analysis-section">
+        <div className="analysis-section-header">
+          <span className="section-icon">🎯</span> Next Steps
+        </div>
+        <div className="analysis-section-body">
+          <div className="analysis-prose">{data.nextSteps}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App ──────────────────────────────────────────────────────────────────
+export default function App() {
+  const [tab, setTab] = useState("analyze");
+  const [lifts, setLifts] = useState(DEFAULT_LIFTS);
+  const [athlete, setAthlete] = useState({ name: "", age: "", bw: "", experience: "Intermediate" });
+  const [selectedGoals, setSelectedGoals] = useState(["Strength"]);
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [analysisData, setAnalysisData] = useState(null);
+  const [error, setError] = useState("");
+  const [rawDebug, setRawDebug] = useState("");
+  const [apiKey, setApiKey] = useState("");
+
+  // Chat state
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content: "Hey! I'm your AI strength coach. Run an analysis first, then ask me anything — about your numbers, how to improve specific lifts, programming questions, or how to structure your training block."
+    }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const toggleGoal = (g) => {
+    setSelectedGoals(prev =>
+      prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]
+    );
+  };
+
+  const updateLift = (key, value) => {
+    setLifts(prev => prev.map(l => l.key === key ? { ...l, value } : l));
+  };
+
+  const handleAnalyze = async () => {
+    if (!apiKey.trim()) { setError("Please enter your Anthropic API key above."); return; }
+    setLoading(true);
+    setError("");
+    setAnalysisData(null);
+    setTab("analyze");
+    try {
+      const prompt = buildPrompt(lifts, athlete, selectedGoals, notes);
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "anthropic-dangerous-direct-browser-access": "true", "x-api-key": apiKey },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-5",
+          max_tokens: 4000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+      const rawText = await res.text();
+      setRawDebug(rawText.slice(0, 500));
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${rawText.slice(0,200)}`);
+      const data = JSON.parse(rawText);
+      if (data.error) throw new Error(data.error?.message || JSON.stringify(data.error));
+      if (!data.content || !data.content.length) throw new Error("Empty content array");
+      const text = data.content.map(b => b.text || "").join("");
+      const start = text.indexOf("{");
+      const end = text.lastIndexOf("}");
+      if (start === -1 || end === -1) throw new Error(`No JSON found. Raw response: ${rawText.slice(0,300)}`);
+      const parsed = JSON.parse(text.slice(start, end + 1));
+      setRawDebug("");
+      setAnalysisData(parsed);
+    } catch (e) {
+      setError(`Analysis failed: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChat = async () => {
+    const msg = chatInput.trim();
+    if (!msg || chatLoading) return;
+    setChatInput("");
+
+    const userMsg = { role: "user", content: msg };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setChatLoading(true);
+
+    const systemPrompt = `You are an expert strength and conditioning coach AI assistant. Be concise, direct, and specific. 
+${analysisData ? `Current athlete analysis: ${JSON.stringify(analysisData)}` : "No analysis run yet — answer general S&C questions."}
+Keep responses focused and practical. Use specific numbers and percentages when relevant.`;
+
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "anthropic-dangerous-direct-browser-access": "true", "x-api-key": apiKey },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-5",
+          max_tokens: 2000,
+          system: systemPrompt,
+          messages: newMessages.map(m => ({ role: m.role, content: m.content }))
+        })
+      });
+      const data = await res.json();
+      const reply = data.content?.map(b => b.text || "").join("") || "No response.";
+      setMessages(prev => [...prev, { role: "assistant", content: reply }]);
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", content: "Error reaching the API. Please try again." }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <style>{globalStyles}</style>
+      <div className="app">
+        {/* Header */}
+        <header className="header">
+          <div className="header-brand">
+            <div className="header-title">IRONMIND AI</div>
+            <div className="header-sub">S&amp;C Intelligence v3</div>
+          </div>
+          <div className="header-tabs">
+            <button className={`tab-btn ${tab === "analyze" ? "active" : ""}`} onClick={() => setTab("analyze")}>
+              Analysis
+            </button>
+            <button className={`tab-btn ${tab === "chat" ? "active" : ""}`} onClick={() => setTab("chat")}>
+              Chat
+            </button>
+          </div>
+        </header>
+
+        <div className="main">
+          {/* Sidebar */}
+          <aside className="sidebar">
+            {/* API Key */}
+            <div className="sidebar-section" style={{ background: "rgba(232,255,71,0.04)", borderBottom: "1px solid rgba(232,255,71,0.15)" }}>
+              <div className="section-label" style={{ color: "var(--accent)" }}>Anthropic API Key</div>
+              <input
+                className="form-input"
+                type="password"
+                placeholder="sk-ant-..."
+                value={apiKey}
+                onChange={e => setApiKey(e.target.value)}
+                style={{ fontFamily: "DM Mono, monospace", fontSize: "0.78rem" }}
+              />
+              <div style={{ fontSize: "0.68rem", color: "var(--muted)", marginTop: 6, lineHeight: 1.5 }}>
+                Get yours at <span style={{ color: "var(--accent)" }}>console.anthropic.com</span>. Never stored or sent anywhere except Anthropic.
+              </div>
+            </div>
+            {/* Athlete info */}
+            <div className="sidebar-section">
+              <div className="section-label">Athlete Profile</div>
+              <div className="form-group">
+                <label className="form-label">Name</label>
+                <input className="form-input" placeholder="e.g. Alex Johnson" value={athlete.name}
+                  onChange={e => setAthlete(a => ({ ...a, name: e.target.value }))} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="form-group">
+                  <label className="form-label">Age</label>
+                  <input className="form-input" type="number" placeholder="25" value={athlete.age}
+                    onChange={e => setAthlete(a => ({ ...a, age: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Body Wt (lbs)</label>
+                  <input className="form-input" type="number" placeholder="185" value={athlete.bw}
+                    onChange={e => setAthlete(a => ({ ...a, bw: e.target.value }))} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Experience Level</label>
+                <select className="form-select" value={athlete.experience}
+                  onChange={e => setAthlete(a => ({ ...a, experience: e.target.value }))}>
+                  {EXPERIENCE.map(x => <option key={x}>{x}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Lifts */}
+            <div className="sidebar-section">
+              <div className="section-label">1-Rep Max / Performance</div>
+              {lifts.map(l => (
+                <div className="lift-row" key={l.key}>
+                  <div className="lift-name">{l.name}</div>
+                  <input
+                    className="lift-input"
+                    type="number"
+                    placeholder="0"
+                    value={l.value}
+                    onChange={e => updateLift(l.key, e.target.value)}
+                  />
+                  <div className="lift-unit">{l.key === "pullup" ? "reps" : "lbs"}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Goals */}
+            <div className="sidebar-section">
+              <div className="section-label">Training Goals</div>
+              <div className="chip-group">
+                {GOALS.map(g => (
+                  <button key={g} className={`chip ${selectedGoals.includes(g) ? "active" : ""}`}
+                    onClick={() => toggleGoal(g)}>
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="sidebar-section">
+              <div className="section-label">Additional Context</div>
+              <textarea className="form-textarea"
+                placeholder="Injuries, sport, competition schedule, weak points, equipment available…"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+              />
+            </div>
+
+            {/* Analyze button */}
+            <div className="sidebar-section" style={{ borderBottom: "none" }}>
+              {error && (
+                <div style={{ color: "var(--danger)", fontSize: "0.78rem", marginBottom: 6, fontFamily: "DM Mono, monospace" }}>
+                  ⚠ {error}
+                </div>
+              )}
+              {rawDebug && (
+                <div style={{ color: "var(--muted)", fontSize: "0.62rem", marginBottom: 10, fontFamily: "DM Mono, monospace", wordBreak: "break-all", background: "var(--surface2)", padding: "8px", borderRadius: "4px", maxHeight: "150px", overflow: "auto", lineHeight: 1.4 }}>
+                  {rawDebug}
+                </div>
+              )}
+              <button className="analyze-btn" onClick={handleAnalyze} disabled={loading}>
+                {loading ? "ANALYZING…" : "RUN ANALYSIS"}
+              </button>
+            </div>
+          </aside>
+
+          {/* Right panel */}
+          <main className="panel">
+            {tab === "analyze" && (
+              <>
+                {loading && (
+                  <div className="loading-state">
+                    <div className="loading-text">Analyzing athlete data</div>
+                    <div className="loading-bar-wrap"><div className="loading-bar" /></div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--muted)", fontFamily: "DM Mono, monospace" }}>
+                      Computing lift ratios · Building program · Identifying weaknesses
+                    </div>
+                  </div>
+                )}
+                {!loading && !analysisData && (
+                  <div className="empty-state">
+                    <div className="empty-icon">🏋️</div>
+                    <div className="empty-title">NO ANALYSIS YET</div>
+                    <div className="empty-sub">
+                      Enter your 1RMs on the left, set your goals, and hit Run Analysis to get a full coaching report with program recommendations.
+                    </div>
+                  </div>
+                )}
+                {!loading && analysisData && <AnalysisView data={analysisData} />}
+              </>
+            )}
+
+            {tab === "chat" && (
+              <div className="chat-wrap">
+                <div className="chat-messages">
+                  {messages.map((m, i) => (
+                    <div className={`chat-msg ${m.role === "user" ? "user" : ""}`} key={i}>
+                      <div className={`chat-avatar ${m.role === "user" ? "user" : "ai"}`}>
+                        {m.role === "user" ? "👤" : "AI"}
+                      </div>
+                      <div className={`chat-bubble ${m.role === "user" ? "user" : "ai"}`}>
+                        {m.content}
+                      </div>
+                    </div>
+                  ))}
+                  {chatLoading && (
+                    <div className="chat-msg">
+                      <div className="chat-avatar ai">AI</div>
+                      <div className="chat-bubble ai">
+                        <div className="typing-dots">
+                          <span /><span /><span />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+                <div className="chat-input-row">
+                  <textarea
+                    className="chat-input"
+                    placeholder="Ask about your analysis, programming, lift technique, periodization…"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleChat(); } }}
+                    rows={1}
+                  />
+                  <button className="chat-send-btn" onClick={handleChat} disabled={chatLoading || !chatInput.trim()}>
+                    SEND
+                  </button>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+    </>
+  );
+}
