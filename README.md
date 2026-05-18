@@ -1,2 +1,2 @@
-# S-C-Program
+# sc-coach
 S&amp;C Programming
