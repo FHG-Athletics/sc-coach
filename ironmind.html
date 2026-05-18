@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IronMind AI — S&C Coach</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0a0a0b; --surface:#111114; --surface2:#18181d;
+      --border:#2a2a32; --accent:#e8ff47; --accent2:#ff6b35;
+      --text:#e8e8ec; --muted:#6b6b7a; --success:#4ade80; --danger:#f87171;
+    }
+    html,body { height:100%; background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; }
+    #root { height:100%; }
+    .app { min-height:100vh; display:flex; flex-direction:column; }
+    .header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--border); background:var(--bg); position:sticky; top:0; z-index:100; }
+    .header-brand { display:flex; align-items:baseline; gap:10px; }
+    .header-title { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:0.05em; color:var(--accent); line-height:1; }
+    .header-sub { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--muted); letter-spacing:0.15em; text-transform:uppercase; }
+    .header-tabs { display:flex; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:4px; }
+    .tab-btn { padding:6px 16px; border-radius:5px; border:none; background:transparent; color:var(--muted); font-family:'DM Mono',monospace; font-size:0.72rem; letter-spacing:0.1em; cursor:pointer; transition:all 0.15s; text-transform:uppercase; }
+    .tab-btn.active { background:var(--accent); color:var(--bg); font-weight:500; }
+    .tab-btn:hover:not(.active) { color:var(--text); background:var(--surface2); }
+    .main { display:grid; grid-template-columns:320px 1fr; flex:1; }
+    .sidebar { border-right:1px solid var(--border); background:var(--surface); display:flex; flex-direction:column; overflow-y:auto; max-height:calc(100vh - 65px); }
+    .sidebar-section { padding:16px; border-bottom:1px solid var(--border); }
+    .section-label { font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+    .lift-row { display:grid; grid-template-columns:1fr 70px 28px; gap:8px; align-items:center; margin-bottom:8px; }
+    .lift-name { font-size:0.82rem; color:var(--text); font-weight:300; }
+    .lift-input { background:var(--surface2); border:1px solid var(--border); border-radius:5px; padding:6px 8px; color:var(--text); font-family:'DM Mono',monospace; font-size:0.78rem; text-align:right; outline:none; transition:border-color 0.15s; width:100%; }
+    .lift-input:focus { border-color:var(--accent); }
+    .lift-unit { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--muted); }
+    .form-group { margin-bottom:10px; }
+    .form-label { display:block; font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+    .form-input,.form-select,.form-textarea { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:5px; padding:7px 10px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:0.82rem; outline:none; transition:border-color 0.15s; }
+    .form-input:focus,.form-select:focus,.form-textarea:focus { border-color:var(--accent); }
+    .form-select option { background:var(--surface2); }
+    .form-textarea { resize:vertical; min-height:72px; font-size:0.8rem; line-height:1.5; }
+    .chip-group { display:flex; flex-wrap:wrap; gap:6px; }
+    .chip { padding:5px 11px; border-radius:100px; border:1px solid var(--border); background:transparent; color:var(--muted); font-family:'DM Mono',monospace; font-size:0.65rem; cursor:pointer; transition:all 0.15s; }
+    .chip.active { border-color:var(--accent); background:var(--accent); color:var(--bg); }
+    .chip:hover:not(.active) { border-color:var(--text); color:var(--text); }
+    .analyze-btn { width:100%; padding:13px; background:var(--accent); color:var(--bg); border:none; border-radius:6px; font-family:'Bebas Neue',sans-serif; font-size:1.15rem; letter-spacing:0.1em; cursor:pointer; transition:all 0.15s; margin-top:4px; }
+    .analyze-btn:hover { background:#d4eb3c; transform:translateY(-1px); }
+    .analyze-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+    .panel { display:flex; flex-direction:column; overflow-y:auto; max-height:calc(100vh - 65px); }
+    .empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:60px; color:var(--muted); text-align:center; }
+    .empty-icon { font-size:3rem; opacity:0.3; }
+    .empty-title { font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:0.08em; color:var(--border); }
+    .empty-sub { font-size:0.8rem; max-width:260px; line-height:1.6; }
+    .loading-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; }
+    .loading-bar-wrap { width:180px; height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+    @keyframes loadSlide { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
+    .loading-bar { height:100%; width:60%; background:var(--accent); border-radius:2px; animation:loadSlide 1.4s ease-in-out infinite; }
+    .loading-text { font-family:'DM Mono',monospace; font-size:0.7rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); }
+    .analysis-wrap { padding:28px; display:flex; flex-direction:column; gap:20px; }
+    .analysis-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding-bottom:18px; border-bottom:1px solid var(--border); }
+    .analysis-title { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:0.06em; line-height:1; }
+    .analysis-meta { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--muted); letter-spacing:0.1em; margin-top:4px; }
+    .rating-badge { text-align:center; }
+    .rating-ring { width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:1.5rem; }
+    .rating-label { font-family:'DM Mono',monospace; font-size:0.58rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); margin-top:4px; }
+    .score-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .score-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px; }
+    .score-card-label { font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+    .score-card-value { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; line-height:1; }
+    .score-card-sub { font-size:0.72rem; color:var(--muted); margin-top:4px; line-height:1.4; }
+    .analysis-section { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .analysis-section-header { padding:12px 16px; background:var(--surface2); border-bottom:1px solid var(--border); font-family:'DM Mono',monospace; font-size:0.67rem; letter-spacing:0.2em; text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+    .analysis-section-body { padding:16px; }
+    .analysis-prose { font-size:0.86rem; line-height:1.75; color:var(--text); white-space:pre-wrap; font-weight:300; }
+    .ratio-bar-row { display:grid; grid-template-columns:130px 1fr 50px; gap:10px; align-items:center; margin-bottom:10px; }
+    .ratio-bar-label { font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--muted); }
+    .ratio-bar-track { height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+    .ratio-bar-fill { height:100%; border-radius:3px; }
+    .ratio-bar-val { font-family:'DM Mono',monospace; font-size:0.7rem; text-align:right; }
+    .flags-list { display:flex; flex-direction:column; gap:8px; }
+    .flag-item { display:flex; align-items:flex-start; gap:10px; padding:9px 13px; border-radius:6px; border:1px solid; }
+    .flag-dot { width:7px; height:7px; border-radius:50%; margin-top:5px; flex-shrink:0; }
+    .flag-text { font-size:0.82rem; line-height:1.55; font-weight:300; }
+    .flag-warn { background:rgba(248,113,113,0.05); border-color:rgba(248,113,113,0.2); }
+    .flag-warn .flag-dot { background:var(--danger); }
+    .flag-info { background:rgba(232,255,71,0.04); border-color:rgba(232,255,71,0.15); }
+    .flag-info .flag-dot { background:var(--accent); }
+    .flag-good { background:rgba(74,222,128,0.04); border-color:rgba(74,222,128,0.15); }
+    .flag-good .flag-dot { background:var(--success); }
+    .program-day { display:grid; grid-template-columns:78px 1fr; gap:10px; margin-bottom:8px; align-items:start; }
+    .program-day-label { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; padding-top:2px; }
+    .program-day-content { font-size:0.83rem; line-height:1.6; font-weight:300; }
+    .chat-wrap { flex:1; display:flex; flex-direction:column; max-height:calc(100vh - 65px); }
+    .chat-messages { flex:1; overflow-y:auto; padding:20px 28px; display:flex; flex-direction:column; gap:14px; }
+    .chat-msg { display:flex; gap:10px; max-width:700px; }
+    .chat-msg.user { align-self:flex-end; flex-direction:row-reverse; }
+    .chat-avatar { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.75rem; flex-shrink:0; margin-top:2px; }
+    .chat-avatar.ai { background:var(--accent); color:var(--bg); font-family:'Bebas Neue'; font-size:0.85rem; }
+    .chat-avatar.user { background:var(--surface2); border:1px solid var(--border); }
+    .chat-bubble { padding:10px 14px; border-radius:8px; font-size:0.85rem; line-height:1.7; font-weight:300; white-space:pre-wrap; }
+    .chat-bubble.ai { background:var(--surface); border:1px solid var(--border); border-top-left-radius:2px; }
+    .chat-bubble.user { background:var(--accent); color:var(--bg); border-bottom-right-radius:2px; }
+    .chat-input-row { padding:14px 28px; border-top:1px solid var(--border); background:var(--surface); display:flex; gap:8px; align-items:flex-end; }
+    .chat-input { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:9px 13px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:0.85rem; resize:none; outline:none; transition:border-color 0.15s; min-height:40px; max-height:110px; line-height:1.5; }
+    .chat-input:focus { border-color:var(--accent); }
+    .chat-send-btn { padding:9px 16px; background:var(--accent); color:var(--bg); border:none; border-radius:8px; font-family:'Bebas Neue',sans-serif; font-size:0.95rem; letter-spacing:0.06em; cursor:pointer; transition:all 0.15s; white-space:nowrap; flex-shrink:0; }
+    .chat-send-btn:hover { background:#d4eb3c; }
+    .chat-send-btn:disabled { opacity:0.4; cursor:not-allowed; }
+    @keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+    .typing-dots { display:flex; gap:4px; padding:4px 0; }
+    .typing-dots span { width:6px; height:6px; border-radius:50%; background:var(--muted); animation:blink 1.4s infinite; }
+    .typing-dots span:nth-child(2) { animation-delay:0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay:0.4s; }
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .error-msg { color:var(--danger); font-size:0.75rem; margin-bottom:8px; font-family:'DM Mono',monospace; line-height:1.5; }
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+const DEFAULT_LIFTS = [
+  { name:"Back Squat",       key:"squat",    value:"" },
+  { name:"Deadlift",         key:"deadlift", value:"" },
+  { name:"Bench Press",      key:"bench",    value:"" },
+  { name:"Overhead Press",   key:"ohp",      value:"" },
+  { name:"Power Clean",      key:"clean",    value:"" },
+  { name:"Pull-Up Max Reps", key:"pullup",   value:"" },
+];
+const GOALS = ["Strength","Power","Hypertrophy","Endurance","Sport Perf","Fat Loss"];
+const EXPERIENCE = ["Beginner","Intermediate","Advanced","Elite"];
+
+function buildPrompt(lifts, athlete, goals, notes) {
+  const liftStr = lifts.filter(l=>l.value).map(l=>`${l.name}: ${l.value}${l.key==="pullup"?" reps":" lbs"}`).join(", ");
+  return `You are an expert strength and conditioning coach who is CSCS certified. Analyze this athlete and respond ONLY with a valid JSON object. No prose, no markdown, no code fences.
+
+ATHLETE: ${athlete.name||"Athlete"}, Age ${athlete.age||"unknown"}, ${athlete.bw?athlete.bw+" lbs bodyweight":""}, ${athlete.experience} level
+GOALS: ${goals.join(", ")}
+LIFTS (1RM unless noted): ${liftStr||"none entered"}
+NOTES: ${notes||"none"}
+
+Return ONLY this JSON with real values:
+{"overallScore":72,"strengthAge":"Intermediate","primaryFocus":"Single sentence focus.","scores":{"strength":70,"balance":65,"potential":80},"scoreNotes":{"strength":"note","balance":"note","potential":"note"},"ratios":[{"label":"Squat / Deadlift","value":0.82,"ideal":0.85,"status":"ok"},{"label":"Bench / Squat","value":0.61,"ideal":0.65,"status":"warn"},{"label":"OHP / Bench","value":0.64,"ideal":0.65,"status":"ok"}],"keyFindings":"3-4 sentences of specific observations.","flags":[{"type":"warn","text":"Specific weakness."},{"type":"good","text":"Specific strength."}],"weeklyProgram":{"philosophy":"2-3 sentences on approach.","days":[{"day":"Monday","focus":"Lower Power","detail":"Back Squat 5x3 @82%, Box Jump 4x5, RDL 3x6"},{"day":"Tuesday","focus":"Upper Push","detail":"Bench 4x5 @78%, OHP 3x8, Tricep work"},{"day":"Wednesday","focus":"Conditioning","detail":"Sport-specific conditioning 30-40 min"},{"day":"Thursday","focus":"Lower Pull","detail":"Deadlift 4x4 @82%, Pause Squat 3x3, GHR 3x10"},{"day":"Friday","focus":"Upper Pull","detail":"Pull-ups 4xAMRAP, Row 4x8, Face Pulls 3x15"},{"day":"Saturday","focus":"Power","detail":"Power Clean 5x3, Jump work, accessory"},{"day":"Sunday","focus":"Rest","detail":"Active recovery, mobility, foam rolling"}]},"nextSteps":"3-4 specific actionable recommendations."}
+
+Compute real ratios from the athlete lift numbers. Status must be: ok, warn, or good.`;
+}
+
+async function callGemini(apiKey, prompt, systemPrompt, chatHistory) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const isChat = !!chatHistory;
+  const body = isChat
+    ? { system_instruction:{parts:[{text:systemPrompt}]}, contents:chatHistory, generationConfig:{temperature:0.8,maxOutputTokens:2000} }
+    : { contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.7,maxOutputTokens:4000,responseMimeType:"application/json"} };
+
+  const res = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+  const raw = await res.text();
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { msg = JSON.parse(raw).error?.message || msg; } catch {}
+    throw new Error(msg);
+  }
+  const data = JSON.parse(raw);
+  if (data.error) throw new Error(data.error.message);
+  const candidate = data.candidates?.[0];
+  if (!candidate) throw new Error(`No response. Block reason: ${data.promptFeedback?.blockReason||"unknown"}`);
+  if (candidate.finishReason==="SAFETY") throw new Error("Blocked by safety filter. Simplify your notes and try again.");
+  const text = candidate.content?.parts?.[0]?.text || "";
+  if (!text) throw new Error(`Empty response. Finish reason: ${candidate.finishReason}`);
+  return text;
+}
+
+function AnalysisView({ data }) {
+  const score = data.overallScore || 0;
+  const scoreColor = score>=75?"var(--success)":score>=50?"var(--accent)":"var(--accent2)";
+  const barColor = s => s==="good"?"var(--success)":s==="warn"?"var(--danger)":"var(--accent)";
+  const valColor = v => v>=75?"var(--success)":v>=50?"var(--accent)":"var(--accent2)";
+  return (
+    <div className="analysis-wrap">
+      <div className="analysis-header">
+        <div>
+          <div className="analysis-title">COACHING REPORT</div>
+          <div className="analysis-meta">{data.strengthAge} · {data.primaryFocus}</div>
+        </div>
+        <div className="rating-badge">
+          <div className="rating-ring" style={{border:`3px solid ${scoreColor}`,color:scoreColor}}>{score}</div>
+          <div className="rating-label">Score</div>
+        </div>
+      </div>
+      <div className="score-grid">
+        {["strength","balance","potential"].map(k=>(
+          <div className="score-card" key={k}>
+            <div className="score-card-label">{k}</div>
+            <div className="score-card-value" style={{color:valColor(data.scores[k])}}>{data.scores[k]}</div>
+            <div className="score-card-sub">{data.scoreNotes[k]}</div>
+          </div>
+        ))}
+      </div>
+      <div className="analysis-section">
+        <div className="analysis-section-header">🔍 Key Findings</div>
+        <div className="analysis-section-body"><div className="analysis-prose">{data.keyFindings}</div></div>
+      </div>
+      {data.ratios?.some(r=>r.value!==null) && (
+        <div className="analysis-section">
+          <div className="analysis-section-header">⚖️ Lift Ratios</div>
+          <div className="analysis-section-body">
+            {data.ratios.filter(r=>r.value!==null).map((r,i)=>(
+              <div className="ratio-bar-row" key={i}>
+                <div className="ratio-bar-label">{r.label}</div>
+                <div className="ratio-bar-track">
+                  <div className="ratio-bar-fill" style={{width:`${Math.min(100,(r.value/(r.ideal*1.5))*100)}%`,background:barColor(r.status)}}/>
+                </div>
+                <div className="ratio-bar-val" style={{color:barColor(r.status)}}>{r.value?.toFixed(2)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {data.flags?.length>0 && (
+        <div className="analysis-section">
+          <div className="analysis-section-header">🚩 Coaching Flags</div>
+          <div className="analysis-section-body">
+            <div className="flags-list">
+              {data.flags.map((f,i)=>(
+                <div className={`flag-item flag-${f.type}`} key={i}>
+                  <div className="flag-dot"/>
+                  <div className="flag-text">{f.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {data.weeklyProgram && (
+        <div className="analysis-section">
+          <div className="analysis-section-header">📋 Weekly Program</div>
+          <div className="analysis-section-body">
+            <div className="analysis-prose" style={{color:"var(--muted)",marginBottom:14}}>{data.weeklyProgram.philosophy}</div>
+            {data.weeklyProgram.days?.map((d,i)=>(
+              <div className="program-day" key={i}>
+                <div className="program-day-label">{d.day}</div>
+                <div className="program-day-content">
+                  <span style={{color:"var(--accent)",fontWeight:600,fontSize:"0.8rem"}}>{d.focus}</span><br/>
+                  {d.detail}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="analysis-section">
+        <div className="analysis-section-header">🎯 Next Steps</div>
+        <div className="analysis-section-body"><div className="analysis-prose">{data.nextSteps}</div></div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [tab, setTab]               = useState("analyze");
+  const [lifts, setLifts]           = useState(DEFAULT_LIFTS);
+  const [athlete, setAthlete]       = useState({name:"",age:"",bw:"",experience:"Intermediate"});
+  const [selectedGoals, setGoals]   = useState(["Strength"]);
+  const [notes, setNotes]           = useState("");
+  const [apiKey, setApiKey]         = useState("");
+  const [loading, setLoading]       = useState(false);
+  const [analysisData, setAnalysis] = useState(null);
+  const [error, setError]           = useState("");
+  const [messages, setMessages]     = useState([{role:"assistant",content:"Hi! I'm your AI S&C coach. Run an analysis first, then ask me anything about programming, periodization, or sport-specific training."}]);
+  const [chatInput, setChatInput]   = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef(null);
+
+  useEffect(()=>{ chatEndRef.current?.scrollIntoView({behavior:"smooth"}); },[messages]);
+
+  const toggleGoal = g => setGoals(prev=>prev.includes(g)?prev.filter(x=>x!==g):[...prev,g]);
+  const updateLift = (key,val) => setLifts(prev=>prev.map(l=>l.key===key?{...l,value:val}:l));
+
+  const handleAnalyze = async () => {
+    if (!apiKey.trim()) { setError("Please enter your Gemini API key."); return; }
+    setLoading(true); setError(""); setAnalysis(null);
+    try {
+      const text = await callGemini(apiKey, buildPrompt(lifts,athlete,selectedGoals,notes));
+      const start = text.indexOf("{"); const end = text.lastIndexOf("}");
+      if (start===-1||end===-1) throw new Error(`No JSON found in response: ${text.slice(0,200)}`);
+      setAnalysis(JSON.parse(text.slice(start,end+1)));
+    } catch(e) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleChat = async () => {
+    const msg = chatInput.trim();
+    if (!msg||chatLoading||!apiKey.trim()) return;
+    setChatInput("");
+    const newMessages = [...messages,{role:"user",content:msg}];
+    setMessages(newMessages);
+    setChatLoading(true);
+    const sys = `You are an expert CSCS-certified S&C coach AI. Be direct and specific. Use real numbers.${analysisData?` Athlete analysis: ${JSON.stringify(analysisData)}`:""}`;
+    const history = newMessages.map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]}));
+    try {
+      const reply = await callGemini(apiKey,null,sys,history);
+      setMessages(prev=>[...prev,{role:"assistant",content:reply}]);
+    } catch(e) { setMessages(prev=>[...prev,{role:"assistant",content:`Error: ${e.message}`}]); }
+    finally { setChatLoading(false); }
+  };
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="header-brand">
+          <div className="header-title">IRONMIND AI</div>
+          <div className="header-sub">CSCS-Backed S&amp;C Intelligence</div>
+        </div>
+        <div className="header-tabs">
+          <button className={`tab-btn ${tab==="analyze"?"active":""}`} onClick={()=>setTab("analyze")}>Analysis</button>
+          <button className={`tab-btn ${tab==="chat"?"active":""}`} onClick={()=>setTab("chat")}>Chat</button>
+        </div>
+      </header>
+      <div className="main">
+        <aside className="sidebar">
+          <div className="sidebar-section" style={{background:"rgba(232,255,71,0.04)",borderBottom:"1px solid rgba(232,255,71,0.15)"}}>
+            <div className="section-label" style={{color:"var(--accent)"}}>Gemini API Key</div>
+            <input className="form-input" type="password" placeholder="AIzaSy..."
+              value={apiKey} onChange={e=>setApiKey(e.target.value)}
+              style={{fontFamily:"DM Mono,monospace",fontSize:"0.76rem"}}/>
+            <div style={{fontSize:"0.65rem",color:"var(--muted)",marginTop:6,lineHeight:1.5}}>
+              Free at aistudio.google.com → Get API key
+            </div>
+          </div>
+          <div className="sidebar-section">
+            <div className="section-label">Athlete Profile</div>
+            <div className="form-group">
+              <label className="form-label">Name</label>
+              <input className="form-input" placeholder="e.g. Alex Johnson" value={athlete.name} onChange={e=>setAthlete(a=>({...a,name:e.target.value}))}/>
+            </div>
+            <div className="two-col">
+              <div className="form-group">
+                <label className="form-label">Age</label>
+                <input className="form-input" type="number" placeholder="25" value={athlete.age} onChange={e=>setAthlete(a=>({...a,age:e.target.value}))}/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Body Wt (lbs)</label>
+                <input className="form-input" type="number" placeholder="185" value={athlete.bw} onChange={e=>setAthlete(a=>({...a,bw:e.target.value}))}/>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Experience</label>
+              <select className="form-select" value={athlete.experience} onChange={e=>setAthlete(a=>({...a,experience:e.target.value}))}>
+                {EXPERIENCE.map(x=><option key={x}>{x}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="sidebar-section">
+            <div className="section-label">1-Rep Max / Performance</div>
+            {lifts.map(l=>(
+              <div className="lift-row" key={l.key}>
+                <div className="lift-name">{l.name}</div>
+                <input className="lift-input" type="number" placeholder="0" value={l.value} onChange={e=>updateLift(l.key,e.target.value)}/>
+                <div className="lift-unit">{l.key==="pullup"?"reps":"lbs"}</div>
+              </div>
+            ))}
+          </div>
+          <div className="sidebar-section">
+            <div className="section-label">Training Goals</div>
+            <div className="chip-group">
+              {GOALS.map(g=>(
+                <button key={g} className={`chip ${selectedGoals.includes(g)?"active":""}`} onClick={()=>toggleGoal(g)}>{g}</button>
+              ))}
+            </div>
+          </div>
+          <div className="sidebar-section">
+            <div className="section-label">Additional Context</div>
+            <textarea className="form-textarea" placeholder="Sport, injuries, competition schedule, equipment, weak points..."
+              value={notes} onChange={e=>setNotes(e.target.value)}/>
+          </div>
+          <div className="sidebar-section" style={{borderBottom:"none"}}>
+            {error && <div className="error-msg">⚠ {error}</div>}
+            <button className="analyze-btn" onClick={handleAnalyze} disabled={loading}>
+              {loading?"ANALYZING…":"RUN ANALYSIS"}
+            </button>
+          </div>
+        </aside>
+        <main className="panel">
+          {tab==="analyze" && (
+            <>
+              {loading && (
+                <div className="loading-state">
+                  <div className="loading-text">Analyzing athlete data</div>
+                  <div className="loading-bar-wrap"><div className="loading-bar"/></div>
+                  <div style={{fontSize:"0.7rem",color:"var(--muted)",fontFamily:"DM Mono,monospace"}}>Computing ratios · Building program · Identifying weak points</div>
+                </div>
+              )}
+              {!loading && !analysisData && (
+                <div className="empty-state">
+                  <div className="empty-icon">🏋️</div>
+                  <div className="empty-title">NO ANALYSIS YET</div>
+                  <div className="empty-sub">Enter your Gemini API key, fill in athlete data, and hit Run Analysis.</div>
+                </div>
+              )}
+              {!loading && analysisData && <AnalysisView data={analysisData}/>}
+            </>
+          )}
+          {tab==="chat" && (
+            <div className="chat-wrap">
+              <div className="chat-messages">
+                {messages.map((m,i)=>(
+                  <div className={`chat-msg ${m.role==="user"?"user":""}`} key={i}>
+                    <div className={`chat-avatar ${m.role==="user"?"user":"ai"}`}>{m.role==="user"?"👤":"AI"}</div>
+                    <div className={`chat-bubble ${m.role==="user"?"user":"ai"}`}>{m.content}</div>
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="chat-msg">
+                    <div className="chat-avatar ai">AI</div>
+                    <div className="chat-bubble ai"><div className="typing-dots"><span/><span/><span/></div></div>
+                  </div>
+                )}
+                <div ref={chatEndRef}/>
+              </div>
+              <div className="chat-input-row">
+                <textarea className="chat-input" placeholder="Ask about programming, periodization, sport-specific training..."
+                  value={chatInput} onChange={e=>setChatInput(e.target.value)}
+                  onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleChat();}}}
+                  rows={1}/>
+                <button className="chat-send-btn" onClick={handleChat} disabled={chatLoading||!chatInput.trim()}>SEND</button>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
