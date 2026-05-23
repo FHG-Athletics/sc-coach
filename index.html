@@ -30,7 +30,8 @@
     .sidebar { border-right:1px solid var(--border); background:var(--surface); display:flex; flex-direction:column; overflow-y:auto; max-height:calc(100vh - 65px); }
     .sidebar-section { padding:16px; border-bottom:1px solid var(--border); }
     .section-label { font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
-    .lift-row { display:grid; grid-template-columns:1fr 70px 28px; gap:8px; align-items:center; margin-bottom:8px; }
+    .sport-label { font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--accent); margin-bottom:12px; }
+    .lift-row { display:grid; grid-template-columns:1fr 70px 32px; gap:8px; align-items:center; margin-bottom:8px; }
     .lift-name { font-size:0.82rem; color:var(--text); font-weight:300; }
     .lift-input { background:var(--surface2); border:1px solid var(--border); border-radius:5px; padding:6px 8px; color:var(--text); font-family:'DM Mono',monospace; font-size:0.78rem; text-align:right; outline:none; transition:border-color 0.15s; width:100%; }
     .lift-input:focus { border-color:var(--accent); }
@@ -62,6 +63,7 @@
     .analysis-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding-bottom:18px; border-bottom:1px solid var(--border); }
     .analysis-title { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:0.06em; line-height:1; }
     .analysis-meta { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--muted); letter-spacing:0.1em; margin-top:4px; }
+    .analysis-sport-badge { display:inline-block; padding:2px 10px; border-radius:100px; border:1px solid rgba(232,255,71,0.3); background:rgba(232,255,71,0.06); color:var(--accent); font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.15em; text-transform:uppercase; margin-top:6px; }
     .rating-badge { text-align:center; }
     .rating-ring { width:60px; height:60px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:1.5rem; }
     .rating-label { font-family:'DM Mono',monospace; font-size:0.58rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); margin-top:4px; }
@@ -133,22 +135,79 @@ const DEFAULT_LIFTS = [
   { name:"Power Clean",      key:"clean",    value:"" },
   { name:"Pull-Up Max Reps", key:"pullup",   value:"" },
 ];
+
+const SPORTS = [
+  "Track & Field","Football","Basketball","Baseball/Softball",
+  "Soccer","Wrestling","Swimming","General Athletic"
+];
+
+const SPORT_METRIC_KEYS = {
+  "Track & Field":     ["verticalJump","broadJump","standingTripleJump","shotPut"],
+  "Football":          ["verticalJump","broadJump","fortyYard","tenYardSplit","proAgility","threeCone","standingTripleJump"],
+  "Basketball":        ["verticalJump","fortyYard","tenYardSplit","proAgility","threeCone","tTest"],
+  "Baseball/Softball": ["verticalJump","fortyYard","tenYardSplit","proAgility"],
+  "Soccer":            ["verticalJump","fortyYard","tenYardSplit","proAgility","tTest"],
+  "Wrestling":         ["verticalJump","broadJump","tenYardSplit","proAgility"],
+  "Swimming":          ["verticalJump","broadJump"],
+  "General Athletic":  ["verticalJump","broadJump","fortyYard","tenYardSplit","proAgility","threeCone","tTest","standingTripleJump","shotPut"],
+};
+
+const METRIC_DEFS = [
+  { key:"verticalJump",       name:"Vertical Jump",        unit:"in"  },
+  { key:"broadJump",          name:"Broad Jump",           unit:"in"  },
+  { key:"fortyYard",          name:"40-Yard Dash",         unit:"sec" },
+  { key:"tenYardSplit",       name:"10-Yard Split",        unit:"sec" },
+  { key:"proAgility",         name:"Pro Agility 5-10-5",   unit:"sec" },
+  { key:"threeCone",          name:"3-Cone Drill",         unit:"sec" },
+  { key:"tTest",              name:"T-Test",               unit:"sec" },
+  { key:"standingTripleJump", name:"Standing Triple Jump", unit:"ft"  },
+  { key:"shotPut",            name:"Shot Put Distance",    unit:"ft"  },
+];
+
+const SPORT_BENCHMARKS = {
+  "Track & Field":
+    "Power athlete benchmarks: Sprinter VJ >30in, Broad Jump >110in, Standing Triple Jump >28ft. Thrower Shot Put varies by gender/level. Periodize around competition season peaks.",
+  "Football":
+    "NFL Combine benchmarks — Skill positions: VJ >35in, Broad Jump >125in, 40yd <4.5s, 10yd <1.55s, Pro Agility <4.25s, 3-Cone <6.9s. Linemen: VJ >28in, 40yd <5.3s, Pro Agility <4.8s. Tailor to position.",
+  "Basketball":
+    "NBA Draft benchmarks: Standing VJ >28in, Max VJ >35in, 3/4-court sprint ~3.1s (proxy 40yd <4.5s), Lane Agility <10.5s. Explosive first-step and vertical power are primary metrics.",
+  "Baseball/Softball":
+    "Elite benchmarks: OF/IF VJ >28in, 60yd dash ~7.0s (40yd proxy <4.5s for outfielders, <4.7s for IF). Rotational power and first-step quickness are critical; 10yd split <1.55s for elite.",
+  "Soccer":
+    "Elite benchmarks: VJ >25in, 40yd <4.8s, 10yd split <1.65s, Pro Agility <4.5s, T-Test <9.5s. Aerobic capacity (VO2max >60) and repeated sprint ability are equally critical to strength.",
+  "Wrestling":
+    "Elite benchmarks vary by weight class: VJ >28in, Broad Jump >100in, Pro Agility <4.5s, 10yd split <1.65s. Strength-to-weight ratio and anaerobic endurance are the primary performance drivers.",
+  "Swimming":
+    "Dry-land power benchmarks: VJ >28in, Broad Jump >100in. Pulling strength (lat pulldown, weighted pull-ups) correlates to freestyle/backstroke speed. Core stiffness and explosive hip drive translate directly to starts and turns.",
+  "General Athletic":
+    "Balanced performance standards: VJ >28in, Broad Jump >100in, 40yd <4.7s, 10yd split <1.6s, Pro Agility <4.5s, 3-Cone <7.0s, T-Test <10.0s. Develop all physical qualities concurrently.",
+};
+
 const GOALS = ["Strength","Power","Hypertrophy","Endurance","Sport Perf","Fat Loss"];
 const EXPERIENCE = ["Beginner","Intermediate","Advanced","Elite"];
 
-function buildPrompt(lifts, athlete, goals, notes) {
+function buildPrompt(lifts, athlete, goals, notes, sport, metrics) {
   const liftStr = lifts.filter(l=>l.value).map(l=>`${l.name}: ${l.value}${l.key==="pullup"?" reps":" lbs"}`).join(", ");
-  return `You are an expert strength and conditioning coach who is CSCS certified. Analyze this athlete and respond ONLY with a valid JSON object. No prose, no markdown, no code fences.
+  const relevantKeys = SPORT_METRIC_KEYS[sport] || [];
+  const metricStr = relevantKeys.filter(k=>metrics[k]).map(k=>{
+    const def = METRIC_DEFS.find(d=>d.key===k);
+    return `${def.name}: ${metrics[k]} ${def.unit}`;
+  }).join(", ");
+  const benchmark = SPORT_BENCHMARKS[sport] || "";
 
+  return `You are an expert strength and conditioning coach who is CSCS certified. Analyze this ${sport} athlete and respond ONLY with a valid JSON object. No prose, no markdown, no code fences.
+
+SPORT: ${sport}
 ATHLETE: ${athlete.name||"Athlete"}, Age ${athlete.age||"unknown"}, ${athlete.bw?athlete.bw+" lbs bodyweight":""}, ${athlete.experience} level
 GOALS: ${goals.join(", ")}
-LIFTS (1RM unless noted): ${liftStr||"none entered"}
+LIFTS (1RM unless noted): ${liftStr||"none entered"}${metricStr?`\nSPORT TESTING METRICS: ${metricStr}`:""}
+SPORT BENCHMARKS: ${benchmark}
 NOTES: ${notes||"none"}
 
-Return ONLY this JSON with real values:
-{"overallScore":72,"strengthAge":"Intermediate","primaryFocus":"Single sentence focus.","scores":{"strength":70,"balance":65,"potential":80},"scoreNotes":{"strength":"note","balance":"note","potential":"note"},"ratios":[{"label":"Squat / Deadlift","value":0.82,"ideal":0.85,"status":"ok"},{"label":"Bench / Squat","value":0.61,"ideal":0.65,"status":"warn"},{"label":"OHP / Bench","value":0.64,"ideal":0.65,"status":"ok"}],"keyFindings":"3-4 sentences of specific observations.","flags":[{"type":"warn","text":"Specific weakness."},{"type":"good","text":"Specific strength."}],"weeklyProgram":{"philosophy":"2-3 sentences on approach.","days":[{"day":"Monday","focus":"Lower Power","detail":"Back Squat 5x3 @82%, Box Jump 4x5, RDL 3x6"},{"day":"Tuesday","focus":"Upper Push","detail":"Bench 4x5 @78%, OHP 3x8, Tricep work"},{"day":"Wednesday","focus":"Conditioning","detail":"Sport-specific conditioning 30-40 min"},{"day":"Thursday","focus":"Lower Pull","detail":"Deadlift 4x4 @82%, Pause Squat 3x3, GHR 3x10"},{"day":"Friday","focus":"Upper Pull","detail":"Pull-ups 4xAMRAP, Row 4x8, Face Pulls 3x15"},{"day":"Saturday","focus":"Power","detail":"Power Clean 5x3, Jump work, accessory"},{"day":"Sunday","focus":"Rest","detail":"Active recovery, mobility, foam rolling"}]},"nextSteps":"3-4 specific actionable recommendations."}
+Return ONLY this JSON with real values (tailor ALL analysis and programming specifically for ${sport}):
+{"overallScore":72,"strengthAge":"Intermediate","primaryFocus":"Single sentence ${sport}-specific focus.","scores":{"strength":70,"balance":65,"potential":80},"scoreNotes":{"strength":"note relative to ${sport} demands","balance":"note","potential":"note"},"ratios":[{"label":"Squat / Deadlift","value":0.82,"ideal":0.85,"status":"ok"},{"label":"Bench / Squat","value":0.61,"ideal":0.65,"status":"warn"},{"label":"OHP / Bench","value":0.64,"ideal":0.65,"status":"ok"}],"keyFindings":"3-4 sentences of ${sport}-specific observations benchmarked against sport standards.","flags":[{"type":"warn","text":"Specific weakness relative to ${sport} demands."},{"type":"good","text":"Specific strength relative to ${sport} demands."}],"weeklyProgram":{"philosophy":"2-3 sentences on ${sport}-specific periodization and training philosophy.","days":[{"day":"Monday","focus":"Lower Power","detail":"Back Squat 5x3 @82%, Box Jump 4x5, RDL 3x6"},{"day":"Tuesday","focus":"Upper Push","detail":"Bench 4x5 @78%, OHP 3x8, Tricep work"},{"day":"Wednesday","focus":"Conditioning","detail":"${sport}-specific conditioning 30-40 min"},{"day":"Thursday","focus":"Lower Pull","detail":"Deadlift 4x4 @82%, Pause Squat 3x3, GHR 3x10"},{"day":"Friday","focus":"Upper Pull","detail":"Pull-ups 4xAMRAP, Row 4x8, Face Pulls 3x15"},{"day":"Saturday","focus":"Power","detail":"Power Clean 5x3, Jump work, ${sport} speed work"},{"day":"Sunday","focus":"Rest","detail":"Active recovery, mobility, foam rolling"}]},"nextSteps":"3-4 specific actionable ${sport} performance recommendations."}
 
-Compute real ratios from the athlete lift numbers. Status must be: ok, warn, or good.`;
+Compute real ratios from the athlete lift numbers. Status must be: ok, warn, or good. Ensure ALL program days, conditioning, and accessory work are specifically chosen for ${sport} athletes.`;
 }
 
 async function callGemini(apiKey, prompt, systemPrompt, chatHistory) {
@@ -175,7 +234,7 @@ async function callGemini(apiKey, prompt, systemPrompt, chatHistory) {
   return text;
 }
 
-function AnalysisView({ data }) {
+function AnalysisView({ data, sport }) {
   const score = data.overallScore || 0;
   const scoreColor = score>=75?"var(--success)":score>=50?"var(--accent)":"var(--accent2)";
   const barColor = s => s==="good"?"var(--success)":s==="warn"?"var(--danger)":"var(--accent)";
@@ -185,7 +244,8 @@ function AnalysisView({ data }) {
       <div className="analysis-header">
         <div>
           <div className="analysis-title">COACHING REPORT</div>
-          <div className="analysis-meta">{data.strengthAge} · {data.primaryFocus}</div>
+          {sport && <div className="analysis-sport-badge">{sport}</div>}
+          <div className="analysis-meta" style={{marginTop:sport?6:4}}>{data.strengthAge} · {data.primaryFocus}</div>
         </div>
         <div className="rating-badge">
           <div className="rating-ring" style={{border:`3px solid ${scoreColor}`,color:scoreColor}}>{score}</div>
@@ -263,6 +323,8 @@ function AnalysisView({ data }) {
 
 function App() {
   const [tab, setTab]               = useState("analyze");
+  const [sport, setSport]           = useState("General Athletic");
+  const [metrics, setMetrics]       = useState({});
   const [lifts, setLifts]           = useState(DEFAULT_LIFTS);
   const [athlete, setAthlete]       = useState({name:"",age:"",bw:"",experience:"Intermediate"});
   const [selectedGoals, setGoals]   = useState(["Strength"]);
@@ -270,6 +332,7 @@ function App() {
   const [apiKey, setApiKey]         = useState("");
   const [loading, setLoading]       = useState(false);
   const [analysisData, setAnalysis] = useState(null);
+  const [analysisSport, setAnalysisSport] = useState("");
   const [error, setError]           = useState("");
   const [messages, setMessages]     = useState([{role:"assistant",content:"Hi! I'm your AI S&C coach. Run an analysis first, then ask me anything about programming, periodization, or sport-specific training."}]);
   const [chatInput, setChatInput]   = useState("");
@@ -280,15 +343,22 @@ function App() {
 
   const toggleGoal = g => setGoals(prev=>prev.includes(g)?prev.filter(x=>x!==g):[...prev,g]);
   const updateLift = (key,val) => setLifts(prev=>prev.map(l=>l.key===key?{...l,value:val}:l));
+  const updateMetric = (key,val) => setMetrics(prev=>({...prev,[key]:val}));
+
+  const handleSportChange = (s) => {
+    setSport(s);
+    setMetrics({});
+  };
 
   const handleAnalyze = async () => {
     if (!apiKey.trim()) { setError("Please enter your Gemini API key."); return; }
     setLoading(true); setError(""); setAnalysis(null);
     try {
-      const text = await callGemini(apiKey, buildPrompt(lifts,athlete,selectedGoals,notes));
+      const text = await callGemini(apiKey, buildPrompt(lifts,athlete,selectedGoals,notes,sport,metrics));
       const start = text.indexOf("{"); const end = text.lastIndexOf("}");
       if (start===-1||end===-1) throw new Error(`No JSON found in response: ${text.slice(0,200)}`);
       setAnalysis(JSON.parse(text.slice(start,end+1)));
+      setAnalysisSport(sport);
     } catch(e) { setError(e.message); }
     finally { setLoading(false); }
   };
@@ -300,7 +370,7 @@ function App() {
     const newMessages = [...messages,{role:"user",content:msg}];
     setMessages(newMessages);
     setChatLoading(true);
-    const sys = `You are an expert CSCS-certified S&C coach AI. Be direct and specific. Use real numbers.${analysisData?` Athlete analysis: ${JSON.stringify(analysisData)}`:""}`;
+    const sys = `You are an expert CSCS-certified S&C coach AI specializing in ${sport}. Be direct and specific. Use real numbers and sport-specific benchmarks for ${sport}.${analysisData?` Athlete analysis: ${JSON.stringify(analysisData)}`:""}`;
     const history = newMessages.map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]}));
     try {
       const reply = await callGemini(apiKey,null,sys,history);
@@ -308,6 +378,8 @@ function App() {
     } catch(e) { setMessages(prev=>[...prev,{role:"assistant",content:`Error: ${e.message}`}]); }
     finally { setChatLoading(false); }
   };
+
+  const activeMetricKeys = SPORT_METRIC_KEYS[sport] || [];
 
   return (
     <div className="app">
@@ -334,6 +406,12 @@ function App() {
           </div>
           <div className="sidebar-section">
             <div className="section-label">Athlete Profile</div>
+            <div className="form-group">
+              <label className="form-label">Sport</label>
+              <select className="form-select" value={sport} onChange={e=>handleSportChange(e.target.value)}>
+                {SPORTS.map(s=><option key={s}>{s}</option>)}
+              </select>
+            </div>
             <div className="form-group">
               <label className="form-label">Name</label>
               <input className="form-input" placeholder="e.g. Alex Johnson" value={athlete.name} onChange={e=>setAthlete(a=>({...a,name:e.target.value}))}/>
@@ -365,6 +443,23 @@ function App() {
               </div>
             ))}
           </div>
+          {activeMetricKeys.length > 0 && (
+            <div className="sidebar-section">
+              <div className="sport-label">{sport} Testing</div>
+              {activeMetricKeys.map(k=>{
+                const def = METRIC_DEFS.find(d=>d.key===k);
+                return (
+                  <div className="lift-row" key={k}>
+                    <div className="lift-name">{def.name}</div>
+                    <input className="lift-input" type="number" placeholder="—"
+                      step="any"
+                      value={metrics[k]||""} onChange={e=>updateMetric(k,e.target.value)}/>
+                    <div className="lift-unit">{def.unit}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className="sidebar-section">
             <div className="section-label">Training Goals</div>
             <div className="chip-group">
@@ -375,7 +470,7 @@ function App() {
           </div>
           <div className="sidebar-section">
             <div className="section-label">Additional Context</div>
-            <textarea className="form-textarea" placeholder="Sport, injuries, competition schedule, equipment, weak points..."
+            <textarea className="form-textarea" placeholder="Position, injuries, competition schedule, equipment, weak points..."
               value={notes} onChange={e=>setNotes(e.target.value)}/>
           </div>
           <div className="sidebar-section" style={{borderBottom:"none"}}>
@@ -390,19 +485,19 @@ function App() {
             <>
               {loading && (
                 <div className="loading-state">
-                  <div className="loading-text">Analyzing athlete data</div>
+                  <div className="loading-text">Analyzing {sport} athlete data</div>
                   <div className="loading-bar-wrap"><div className="loading-bar"/></div>
-                  <div style={{fontSize:"0.7rem",color:"var(--muted)",fontFamily:"DM Mono,monospace"}}>Computing ratios · Building program · Identifying weak points</div>
+                  <div style={{fontSize:"0.7rem",color:"var(--muted)",fontFamily:"DM Mono,monospace"}}>Computing ratios · Building sport program · Benchmarking metrics</div>
                 </div>
               )}
               {!loading && !analysisData && (
                 <div className="empty-state">
                   <div className="empty-icon">🏋️</div>
                   <div className="empty-title">NO ANALYSIS YET</div>
-                  <div className="empty-sub">Enter your Gemini API key, fill in athlete data, and hit Run Analysis.</div>
+                  <div className="empty-sub">Select a sport, enter athlete data, and hit Run Analysis for a sport-specific coaching report.</div>
                 </div>
               )}
-              {!loading && analysisData && <AnalysisView data={analysisData}/>}
+              {!loading && analysisData && <AnalysisView data={analysisData} sport={analysisSport}/>}
             </>
           )}
           {tab==="chat" && (
