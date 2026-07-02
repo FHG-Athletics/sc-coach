@@ -122,6 +122,8 @@
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
     .ai-assessed-tag { font-family:'DM Mono',monospace; font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); border:1px solid var(--border); border-radius:100px; padding:1px 8px; display:inline-block; margin-top:6px; }
     .data-notice { font-size:0.65rem; color:var(--muted); margin-top:10px; line-height:1.5; padding-top:10px; border-top:1px solid rgba(232,255,71,0.15); }
+    .new-athlete-btn { padding:6px 14px; border-radius:5px; border:1px solid var(--border); background:transparent; color:var(--muted); font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+    .new-athlete-btn:hover { color:var(--text); border-color:var(--text); }
 
     @media (max-width: 768px) {
       html, body { height:auto; }
@@ -365,26 +367,51 @@ function AnalysisView({ data, sport, ratios }) {
   );
 }
 
+const STORAGE_KEY = "ironmind_ai_session_v1";
+const DEFAULT_ATHLETE = {name:"",age:"",bw:"",experience:"Intermediate"};
+const DEFAULT_MESSAGES = [{role:"assistant",content:"Hi! I'm your AI S&C coach. Run an analysis first, then ask me anything about programming, periodization, or sport-specific training."}];
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
 function App() {
+  const savedRef = useRef(loadSession());
+  const saved = savedRef.current;
   const [tab, setTab]               = useState("analyze");
-  const [sport, setSport]           = useState("General Athletic");
-  const [metrics, setMetrics]       = useState({});
-  const [lifts, setLifts]           = useState(DEFAULT_LIFTS);
-  const [athlete, setAthlete]       = useState({name:"",age:"",bw:"",experience:"Intermediate"});
-  const [selectedGoals, setGoals]   = useState(["Strength"]);
-  const [notes, setNotes]           = useState("");
+  const [sport, setSport]           = useState(saved?.sport || "General Athletic");
+  const [metrics, setMetrics]       = useState(saved?.metrics || {});
+  const [lifts, setLifts]           = useState(saved?.lifts || DEFAULT_LIFTS);
+  const [athlete, setAthlete]       = useState(saved?.athlete || DEFAULT_ATHLETE);
+  const [selectedGoals, setGoals]   = useState(saved?.selectedGoals || ["Strength"]);
+  const [notes, setNotes]           = useState(saved?.notes || "");
   const [apiKey, setApiKey]         = useState("");
   const [loading, setLoading]       = useState(false);
-  const [analysisData, setAnalysis] = useState(null);
-  const [analysisSport, setAnalysisSport] = useState("");
-  const [analysisRatios, setAnalysisRatios] = useState(null);
+  const [analysisData, setAnalysis] = useState(saved?.analysisData || null);
+  const [analysisSport, setAnalysisSport] = useState(saved?.analysisSport || "");
+  const [analysisRatios, setAnalysisRatios] = useState(saved?.analysisRatios || null);
   const [error, setError]           = useState("");
-  const [messages, setMessages]     = useState([{role:"assistant",content:"Hi! I'm your AI S&C coach. Run an analysis first, then ask me anything about programming, periodization, or sport-specific training."}]);
+  const [messages, setMessages]     = useState(saved?.messages || DEFAULT_MESSAGES);
   const [chatInput, setChatInput]   = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
 
   useEffect(()=>{ chatEndRef.current?.scrollIntoView({behavior:"smooth"}); },[messages]);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          athlete, lifts, metrics, sport, selectedGoals, notes,
+          analysisData, analysisSport, analysisRatios, messages,
+        }));
+      } catch {}
+    }, 400);
+    return () => clearTimeout(id);
+  }, [athlete, lifts, metrics, sport, selectedGoals, notes, analysisData, analysisSport, analysisRatios, messages]);
 
   const toggleGoal = g => setGoals(prev=>prev.includes(g)?prev.filter(x=>x!==g):[...prev,g]);
   const updateLift = (key,val) => setLifts(prev=>prev.map(l=>l.key===key?{...l,value:val}:l));
@@ -393,6 +420,23 @@ function App() {
   const handleSportChange = (s) => {
     setSport(s);
     setMetrics({});
+  };
+
+  const handleNewAthlete = () => {
+    if (!window.confirm("Start a new athlete? This clears the current session.")) return;
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    setSport("General Athletic");
+    setMetrics({});
+    setLifts(DEFAULT_LIFTS);
+    setAthlete(DEFAULT_ATHLETE);
+    setGoals(["Strength"]);
+    setNotes("");
+    setAnalysis(null);
+    setAnalysisSport("");
+    setAnalysisRatios(null);
+    setError("");
+    setMessages(DEFAULT_MESSAGES);
+    setChatInput("");
   };
 
   const validateInputs = () => {
@@ -462,6 +506,7 @@ function App() {
           <button className={`tab-btn ${tab==="analyze"?"active":""}`} onClick={()=>setTab("analyze")}>Analysis</button>
           <button className={`tab-btn ${tab==="chat"?"active":""}`} onClick={()=>setTab("chat")}>Chat</button>
         </div>
+        <button className="new-athlete-btn" onClick={handleNewAthlete}>New Athlete</button>
       </header>
       <div className="main">
         <aside className="sidebar">
