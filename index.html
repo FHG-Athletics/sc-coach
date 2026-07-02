@@ -138,6 +138,27 @@
       .score-grid { grid-template-columns:1fr; }
       .analysis-header { flex-wrap:wrap; }
     }
+
+    .print-btn { align-self:flex-start; padding:7px 14px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-family:'DM Mono',monospace; font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; transition:all 0.15s; }
+    .print-btn:hover { color:var(--text); border-color:var(--text); }
+
+    @media print {
+      .header, .sidebar, .chat-wrap, .print-btn { display:none !important; }
+      html, body { background:#fff !important; color:#000 !important; height:auto !important; }
+      .app { min-height:0; }
+      .main { display:block !important; }
+      .panel { max-height:none !important; overflow:visible !important; }
+      .analysis-wrap { padding:0 !important; }
+      .analysis-title, .analysis-meta, .analysis-sport-badge, .rating-label, .ai-assessed-tag,
+      .score-card-label, .score-card-value, .score-card-sub, .analysis-section-header,
+      .analysis-prose, .ratio-bar-label, .ratio-bar-val, .flag-text, .program-day-label,
+      .program-day-content, .rating-ring { color:#000 !important; }
+      .rating-ring { border-color:#000 !important; }
+      .analysis-section, .score-card { background:#fff !important; border:1px solid #ccc !important; break-inside:avoid; }
+      .analysis-section-header { background:#f0f0f0 !important; border-bottom:1px solid #ccc !important; }
+      .ratio-bar-track { background:#e0e0e0 !important; }
+      .flag-item { border-color:#ccc !important; background:#fff !important; }
+    }
   </style>
 </head>
 <body>
@@ -298,6 +319,7 @@ function AnalysisView({ data, sport, ratios }) {
           <div className="ai-assessed-tag">AI-assessed</div>
         </div>
       </div>
+      <button className="print-btn" onClick={()=>window.print()}>🖨 Print / Save PDF</button>
       <div className="score-grid">
         {["strength","balance","potential"].map(k=>(
           <div className="score-card" key={k}>
