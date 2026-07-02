@@ -120,6 +120,7 @@
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    .ai-assessed-tag { font-family:'DM Mono',monospace; font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); border:1px solid var(--border); border-radius:100px; padding:1px 8px; display:inline-block; margin-top:6px; }
   </style>
 </head>
 <body>
@@ -186,7 +187,30 @@ const SPORT_BENCHMARKS = {
 const GOALS = ["Strength","Power","Hypertrophy","Endurance","Sport Perf","Fat Loss"];
 const EXPERIENCE = ["Beginner","Intermediate","Advanced","Elite"];
 
-function buildPrompt(lifts, athlete, goals, notes, sport, metrics) {
+const RATIO_DEFS = [
+  { key:"squatDeadlift", label:"Squat / Deadlift", numKey:"squat",    denKey:"deadlift", ideal:0.85 },
+  { key:"benchSquat",    label:"Bench / Squat",     numKey:"bench",   denKey:"squat",    ideal:0.65 },
+  { key:"ohpBench",      label:"OHP / Bench",       numKey:"ohp",     denKey:"bench",    ideal:0.65 },
+];
+
+function computeRatios(lifts) {
+  const liftVal = key => {
+    const l = lifts.find(x=>x.key===key);
+    const v = l ? parseFloat(l.value) : NaN;
+    return Number.isFinite(v) && v>0 ? v : null;
+  };
+  return RATIO_DEFS.map(d => {
+    const num = liftVal(d.numKey);
+    const den = liftVal(d.denKey);
+    if (num===null || den===null) return { label:d.label, value:null, ideal:d.ideal, status:null };
+    const value = num/den;
+    const pctOff = Math.abs(value-d.ideal)/d.ideal;
+    const status = pctOff<=0.05 ? "good" : pctOff>0.15 ? "warn" : "ok";
+    return { label:d.label, value:Math.round(value*100)/100, ideal:d.ideal, status };
+  });
+}
+
+function buildPrompt(lifts, athlete, goals, notes, sport, metrics, ratios) {
   const liftStr = lifts.filter(l=>l.value).map(l=>`${l.name}: ${l.value}${l.key==="pullup"?" reps":" lbs"}`).join(", ");
   const relevantKeys = SPORT_METRIC_KEYS[sport] || [];
   const metricStr = relevantKeys.filter(k=>metrics[k]).map(k=>{
@@ -194,6 +218,9 @@ function buildPrompt(lifts, athlete, goals, notes, sport, metrics) {
     return `${def.name}: ${metrics[k]} ${def.unit}`;
   }).join(", ");
   const benchmark = SPORT_BENCHMARKS[sport] || "";
+  const ratioStr = ratios.filter(r=>r.value!==null)
+    .map(r=>`${r.label} = ${r.value} (ideal ${r.ideal}, status: ${r.status})`)
+    .join("; ") || "insufficient lift data to compute ratios";
 
   return `You are an expert strength and conditioning coach who is CSCS certified. Analyze this ${sport} athlete and respond ONLY with a valid JSON object. No prose, no markdown, no code fences.
 
@@ -203,11 +230,12 @@ GOALS: ${goals.join(", ")}
 LIFTS (1RM unless noted): ${liftStr||"none entered"}${metricStr?`\nSPORT TESTING METRICS: ${metricStr}`:""}
 SPORT BENCHMARKS: ${benchmark}
 NOTES: ${notes||"none"}
+COMPUTED LIFT RATIOS (already calculated from the athlete's numbers — treat these as ground truth; reference these exact values/statuses in your findings and flags, do NOT invent or recompute your own ratio numbers): ${ratioStr}
 
 Return ONLY this JSON with real values (tailor ALL analysis and programming specifically for ${sport}):
-{"overallScore":72,"strengthAge":"Intermediate","primaryFocus":"Single sentence ${sport}-specific focus.","scores":{"strength":70,"balance":65,"potential":80},"scoreNotes":{"strength":"note relative to ${sport} demands","balance":"note","potential":"note"},"ratios":[{"label":"Squat / Deadlift","value":0.82,"ideal":0.85,"status":"ok"},{"label":"Bench / Squat","value":0.61,"ideal":0.65,"status":"warn"},{"label":"OHP / Bench","value":0.64,"ideal":0.65,"status":"ok"}],"keyFindings":"3-4 sentences of ${sport}-specific observations benchmarked against sport standards.","flags":[{"type":"warn","text":"Specific weakness relative to ${sport} demands."},{"type":"good","text":"Specific strength relative to ${sport} demands."}],"weeklyProgram":{"philosophy":"2-3 sentences on ${sport}-specific periodization and training philosophy.","days":[{"day":"Monday","focus":"Lower Power","detail":"Back Squat 5x3 @82%, Box Jump 4x5, RDL 3x6"},{"day":"Tuesday","focus":"Upper Push","detail":"Bench 4x5 @78%, OHP 3x8, Tricep work"},{"day":"Wednesday","focus":"Conditioning","detail":"${sport}-specific conditioning 30-40 min"},{"day":"Thursday","focus":"Lower Pull","detail":"Deadlift 4x4 @82%, Pause Squat 3x3, GHR 3x10"},{"day":"Friday","focus":"Upper Pull","detail":"Pull-ups 4xAMRAP, Row 4x8, Face Pulls 3x15"},{"day":"Saturday","focus":"Power","detail":"Power Clean 5x3, Jump work, ${sport} speed work"},{"day":"Sunday","focus":"Rest","detail":"Active recovery, mobility, foam rolling"}]},"nextSteps":"3-4 specific actionable ${sport} performance recommendations."}
+{"overallScore":72,"strengthAge":"Intermediate","primaryFocus":"Single sentence ${sport}-specific focus.","scores":{"strength":70,"balance":65,"potential":80},"scoreNotes":{"strength":"note relative to ${sport} demands","balance":"note","potential":"note"},"keyFindings":"3-4 sentences of ${sport}-specific observations benchmarked against sport standards, referencing the given lift ratios where relevant.","flags":[{"type":"warn","text":"Specific weakness relative to ${sport} demands, referencing the given ratios/metrics."},{"type":"good","text":"Specific strength relative to ${sport} demands."}],"weeklyProgram":{"philosophy":"2-3 sentences on ${sport}-specific periodization and training philosophy.","days":[{"day":"Monday","focus":"Lower Power","detail":"Back Squat 5x3 @82%, Box Jump 4x5, RDL 3x6"},{"day":"Tuesday","focus":"Upper Push","detail":"Bench 4x5 @78%, OHP 3x8, Tricep work"},{"day":"Wednesday","focus":"Conditioning","detail":"${sport}-specific conditioning 30-40 min"},{"day":"Thursday","focus":"Lower Pull","detail":"Deadlift 4x4 @82%, Pause Squat 3x3, GHR 3x10"},{"day":"Friday","focus":"Upper Pull","detail":"Pull-ups 4xAMRAP, Row 4x8, Face Pulls 3x15"},{"day":"Saturday","focus":"Power","detail":"Power Clean 5x3, Jump work, ${sport} speed work"},{"day":"Sunday","focus":"Rest","detail":"Active recovery, mobility, foam rolling"}]},"nextSteps":"3-4 specific actionable ${sport} performance recommendations."}
 
-Compute real ratios from the athlete lift numbers. Status must be: ok, warn, or good. Ensure ALL program days, conditioning, and accessory work are specifically chosen for ${sport} athletes.`;
+Do NOT include a "ratios" key in your JSON — ratios are supplied above and rendered separately. Ensure ALL program days, conditioning, and accessory work are specifically chosen for ${sport} athletes.`;
 }
 
 async function callGemini(apiKey, prompt, systemPrompt, chatHistory) {
@@ -234,7 +262,7 @@ async function callGemini(apiKey, prompt, systemPrompt, chatHistory) {
   return text;
 }
 
-function AnalysisView({ data, sport }) {
+function AnalysisView({ data, sport, ratios }) {
   const score = data.overallScore || 0;
   const scoreColor = score>=75?"var(--success)":score>=50?"var(--accent)":"var(--accent2)";
   const barColor = s => s==="good"?"var(--success)":s==="warn"?"var(--danger)":"var(--accent)";
@@ -250,6 +278,7 @@ function AnalysisView({ data, sport }) {
         <div className="rating-badge">
           <div className="rating-ring" style={{border:`3px solid ${scoreColor}`,color:scoreColor}}>{score}</div>
           <div className="rating-label">Score</div>
+          <div className="ai-assessed-tag">AI-assessed</div>
         </div>
       </div>
       <div className="score-grid">
@@ -265,11 +294,11 @@ function AnalysisView({ data, sport }) {
         <div className="analysis-section-header">🔍 Key Findings</div>
         <div className="analysis-section-body"><div className="analysis-prose">{data.keyFindings}</div></div>
       </div>
-      {data.ratios?.some(r=>r.value!==null) && (
+      {ratios?.some(r=>r.value!==null) && (
         <div className="analysis-section">
           <div className="analysis-section-header">⚖️ Lift Ratios</div>
           <div className="analysis-section-body">
-            {data.ratios.filter(r=>r.value!==null).map((r,i)=>(
+            {ratios.filter(r=>r.value!==null).map((r,i)=>(
               <div className="ratio-bar-row" key={i}>
                 <div className="ratio-bar-label">{r.label}</div>
                 <div className="ratio-bar-track">
@@ -333,6 +362,7 @@ function App() {
   const [loading, setLoading]       = useState(false);
   const [analysisData, setAnalysis] = useState(null);
   const [analysisSport, setAnalysisSport] = useState("");
+  const [analysisRatios, setAnalysisRatios] = useState(null);
   const [error, setError]           = useState("");
   const [messages, setMessages]     = useState([{role:"assistant",content:"Hi! I'm your AI S&C coach. Run an analysis first, then ask me anything about programming, periodization, or sport-specific training."}]);
   const [chatInput, setChatInput]   = useState("");
@@ -354,10 +384,12 @@ function App() {
     if (!apiKey.trim()) { setError("Please enter your Gemini API key."); return; }
     setLoading(true); setError(""); setAnalysis(null);
     try {
-      const text = await callGemini(apiKey, buildPrompt(lifts,athlete,selectedGoals,notes,sport,metrics));
+      const ratios = computeRatios(lifts);
+      const text = await callGemini(apiKey, buildPrompt(lifts,athlete,selectedGoals,notes,sport,metrics,ratios));
       const start = text.indexOf("{"); const end = text.lastIndexOf("}");
       if (start===-1||end===-1) throw new Error(`No JSON found in response: ${text.slice(0,200)}`);
       setAnalysis(JSON.parse(text.slice(start,end+1)));
+      setAnalysisRatios(ratios);
       setAnalysisSport(sport);
     } catch(e) { setError(e.message); }
     finally { setLoading(false); }
@@ -370,7 +402,7 @@ function App() {
     const newMessages = [...messages,{role:"user",content:msg}];
     setMessages(newMessages);
     setChatLoading(true);
-    const sys = `You are an expert CSCS-certified S&C coach AI specializing in ${sport}. Be direct and specific. Use real numbers and sport-specific benchmarks for ${sport}.${analysisData?` Athlete analysis: ${JSON.stringify(analysisData)}`:""}`;
+    const sys = `You are an expert CSCS-certified S&C coach AI specializing in ${sport}. Be direct and specific. Use real numbers and sport-specific benchmarks for ${sport}.${analysisData?` Athlete analysis: ${JSON.stringify({...analysisData, ratios:analysisRatios})}`:""}`;
     const history = newMessages.map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]}));
     try {
       const reply = await callGemini(apiKey,null,sys,history);
@@ -497,7 +529,7 @@ function App() {
                   <div className="empty-sub">Select a sport, enter athlete data, and hit Run Analysis for a sport-specific coaching report.</div>
                 </div>
               )}
-              {!loading && analysisData && <AnalysisView data={analysisData} sport={analysisSport}/>}
+              {!loading && analysisData && <AnalysisView data={analysisData} sport={analysisSport} ratios={analysisRatios}/>}
             </>
           )}
           {tab==="chat" && (
