@@ -394,8 +394,31 @@ function App() {
     setMetrics({});
   };
 
+  const validateInputs = () => {
+    const hasLift = lifts.some(l => {
+      const v = parseFloat(l.value);
+      return l.value!=="" && Number.isFinite(v) && v>0;
+    });
+    const hasMetric = Object.values(metrics).some(v => {
+      const n = parseFloat(v);
+      return v!==""&&v!=null && Number.isFinite(n) && n>0;
+    });
+    if (!hasLift && !hasMetric) return "Enter at least one lift or performance metric before running analysis.";
+    if (athlete.age !== "") {
+      const age = parseFloat(athlete.age);
+      if (!Number.isFinite(age) || age<=0 || age>100) return "Enter a valid age between 1 and 100.";
+    }
+    if (athlete.bw !== "") {
+      const bw = parseFloat(athlete.bw);
+      if (!Number.isFinite(bw) || bw<=0 || bw>600) return "Enter a valid bodyweight between 1 and 600 lbs.";
+    }
+    return "";
+  };
+
   const handleAnalyze = async () => {
     if (!apiKey.trim()) { setError("Please enter your Gemini API key."); return; }
+    const validationError = validateInputs();
+    if (validationError) { setError(validationError); return; }
     setLoading(true); setError(""); setAnalysis(null);
     try {
       const ratios = computeRatios(lifts);
